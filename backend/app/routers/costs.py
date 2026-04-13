@@ -1,3 +1,6 @@
+# Router de custos AWS - endpoints para análise de custos e orçamento
+# Requer autenticação JWT em todos os endpoints
+
 from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
@@ -6,6 +9,7 @@ from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/costs", tags=["Custos"])
 
+# Dashboard principal com visão geral dos custos do mês atual
 @router.get("/dashboard")
 async def get_dashboard(current_user: dict = Depends(get_current_user)):
     from app.services.aws_cost import aws_cost_service
@@ -13,19 +17,23 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
     today = datetime.utcnow()
     start_of_month = today.replace(day=1)
     
+    # Consulta custos desde o início do mês
     cost_data = aws_cost_service.get_cost_and_usage(
         start_date=start_of_month.strftime("%Y-%m-%d"),
         end_date=today.strftime("%Y-%m-%d"),
         granularity="DAILY"
     )
     
+    # Consulta gastos por serviço
     spend_by_service = aws_cost_service.get_spend_by_service(
         start_date=start_of_month.strftime("%Y-%m-%d"),
         end_date=today.strftime("%Y-%m-%d")
     )
     
+    # Consulta tendência diária dos últimos 30 dias
     daily_trend = aws_cost_service.get_daily_cost_trend(30)
     
+    # Consulta top 5 recursos mais caros
     top_resources = aws_cost_service.get_top_resources(5)
     
     return {
@@ -35,6 +43,7 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
         "top_resources": top_resources
     }
 
+# Tendência de custos diários para gráficos
 @router.get("/daily-trend")
 async def get_daily_trend(
     days: int = 30,
@@ -45,6 +54,7 @@ async def get_daily_trend(
     trend = aws_cost_service.get_daily_cost_trend(days)
     return {"daily_costs": trend.get("daily_costs", [])}
 
+# Custos detalhados por serviço AWS
 @router.get("/by-service")
 async def get_costs_by_service(
     start_date: Optional[str] = None,
@@ -53,6 +63,7 @@ async def get_costs_by_service(
 ):
     from app.services.aws_cost import aws_cost_service
     
+    # Usa início do mês atual como padrão
     if not start_date:
         start_date = datetime.utcnow().replace(day=1).strftime("%Y-%m-%d")
     if not end_date:
@@ -61,6 +72,7 @@ async def get_costs_by_service(
     services = aws_cost_service.get_spend_by_service(start_date, end_date)
     return {"services": services}
 
+# Detecção de anomalias de custos
 @router.get("/anomalies")
 async def get_anomalies(
     days: int = 30,
@@ -74,6 +86,7 @@ async def get_anomalies(
     
     return {"anomalies": anomalies}
 
+# Previsão de custos para fim do mês
 @router.get("/forecast")
 async def get_forecast(current_user: dict = Depends(get_current_user)):
     from app.services.aws_cost import aws_cost_service
@@ -83,6 +96,7 @@ async def get_forecast(current_user: dict = Depends(get_current_user)):
     days_in_month = monthrange(today.year, today.month)[1]
     days_passed = today.day
     
+    # Consulta custos do mês atual
     cost_data = aws_cost_service.get_cost_and_usage(
         start_date=start_of_month.strftime("%Y-%m-%d"),
         end_date=today.strftime("%Y-%m-%d"),
@@ -93,9 +107,11 @@ async def get_forecast(current_user: dict = Depends(get_current_user)):
     if not daily_costs:
         return {"forecast": 0, "current_spend": 0, "daily_average": 0}
     
+    # Calcula custo atual e média diária
     current_spend = sum(d["total"] for d in daily_costs)
     daily_average = current_spend / days_passed if days_passed > 0 else 0
     
+    # Projeta custo para dias restantes
     remaining_days = days_in_month - days_passed
     projected_additional = daily_average * remaining_days
     forecast = current_spend + projected_additional
@@ -109,6 +125,7 @@ async def get_forecast(current_user: dict = Depends(get_current_user)):
         "remaining_days": remaining_days
     }
 
+# Conformidade de tags AWS
 @router.get("/tag-compliance")
 async def get_tag_compliance(current_user: dict = Depends(get_current_user)):
     from app.services.tag_compliance import tag_compliance_service
@@ -121,6 +138,7 @@ async def get_tag_compliance(current_user: dict = Depends(get_current_user)):
         "summary": summary
     }
 
+# Exporta custos em formato CSV
 @router.get("/export-csv")
 async def export_csv(current_user: dict = Depends(get_current_user)):
     from app.services.aws_cost import aws_cost_service
@@ -131,11 +149,13 @@ async def export_csv(current_user: dict = Depends(get_current_user)):
     today = datetime.utcnow()
     start_of_month = today.replace(day=1)
     
+    # Consulta custos por serviço
     services = aws_cost_service.get_spend_by_service(
         start_date=start_of_month.strftime("%Y-%m-%d"),
         end_date=today.strftime("%Y-%m-%d")
     )
     
+    # Gera CSV em memória
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["Serviço", "Custo (USD)"])

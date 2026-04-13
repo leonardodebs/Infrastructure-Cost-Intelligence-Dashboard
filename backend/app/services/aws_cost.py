@@ -1,3 +1,6 @@
+# Serviço de consulta de custos AWS via Cost Explorer API
+# Suporta modo mock para desenvolvimento sem credenciais
+
 import os
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
@@ -9,16 +12,20 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class AWSCostService:
+    # Inicializa o serviço de custos AWS
+    # Usa credenciais do ambiente ou entra em modo mock
     def __init__(self):
         self.aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
         self.aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
         self.aws_region = os.getenv("AWS_REGION", "us-east-1")
         
+        # Verifica se as credenciais AWS estão configuradas
         if not self.aws_access_key_id or not self.aws_secret_access_key:
             logger.warning("AWS credentials not configured - using mock data")
             self.mock_mode = True
         else:
             self.mock_mode = False
+            # Cria cliente do AWS Cost Explorer com as credenciais fornecidas
             self.ce_client = boto3.client(
                 'ce',
                 aws_access_key_id=self.aws_access_key_id,
@@ -26,6 +33,7 @@ class AWSCostService:
                 region_name=self.aws_region
             )
     
+    # Gera dados simulados para desenvolvimentolocal sem credenciais AWS
     def _get_mock_data(self) -> Dict[str, Any]:
         from datetime import datetime, timedelta
         import random
@@ -35,6 +43,7 @@ class AWSCostService:
         
         daily_costs = []
         for i in range(30):
+            # Gera custos para cada um dos últimos 30 dias
             day = today - timedelta(days=29 - i)
             day_cost = {}
             for service in services:
@@ -45,6 +54,7 @@ class AWSCostService:
                     "Lambda": 15,
                     "Data Transfer": 30
                 }
+                # Aplica variação aleatória de 80% a 130% do custo base
                 variance = random.uniform(0.8, 1.3)
                 day_cost[service] = round(base_cost[service] * variance, 2)
             daily_costs.append({
@@ -59,7 +69,9 @@ class AWSCostService:
             "month_to_date": sum(d["total"] for d in daily_costs)
         }
     
+    # Consulta custos eusage da AWS para um período específico
     def get_cost_and_usage(self, start_date: str, end_date: str, granularity: str = "DAILY") -> Dict[str, Any]:
+        # Em modo mock, retorna dados simulados
         if self.mock_mode:
             return self._get_mock_data()
         
@@ -91,6 +103,7 @@ class AWSCostService:
                     "total": sum(costs_by_service.values())
                 })
             
+            # Extrai lista única de serviços
             services = []
             for dc in daily_costs:
                 for svc in dc["costs"].keys():
@@ -107,6 +120,7 @@ class AWSCostService:
             logger.error(f"AWS API error: {e}")
             return self._get_mock_data()
     
+    # Retorna gastos agregados por serviço AWS
     def get_spend_by_service(self, start_date: str, end_date: str) -> List[Dict[str, Any]]:
         if self.mock_mode:
             mock = self._get_mock_data()
@@ -141,6 +155,7 @@ class AWSCostService:
             logger.error(f"AWS API error: {e}")
             return []
     
+    # Retorna tendência de custos diários dos últimos N dias
     def get_daily_cost_trend(self, days: int = 30) -> Dict[str, Any]:
         end_date = datetime.utcnow()
         start_date = end_date - timedelta(days=days)
@@ -151,6 +166,7 @@ class AWSCostService:
             "DAILY"
         )
     
+    # Retorna os N recursos mais caros
     def get_top_resources(self, limit: int = 5) -> List[Dict[str, Any]]:
         if self.mock_mode:
             resources = [
@@ -186,6 +202,7 @@ class AWSCostService:
                             "cost": round(cost, 2)
                         })
             
+            # Ordena por custo decrescente e limita resultados
             resources = sorted(resources, key=lambda x: x["cost"], reverse=True)
             return resources[:limit]
             
@@ -193,4 +210,5 @@ class AWSCostService:
             logger.error(f"AWS API error: {e}")
             return []
 
+# Instância global do serviço de custos
 aws_cost_service = AWSCostService()
