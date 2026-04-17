@@ -24,30 +24,38 @@ O **CloudCost IQ** é uma solução avançada de Observabilidade de Custos Cloud
 
 ```mermaid
 graph TB
-    subgraph Client["Frontend (React + Tailwind)"]
-        UI[Painel Moderno]
-        Charts[Gráficos Inteligentes]
+    User((Usuário))
+
+    subgraph AWS_Cloud["AWS Cloud (VPC)"]
+        ALB[Application Load Balancer]
+        
+        subgraph Public_Subnet["Public Subnet"]
+            Frontend[ECS Fargate: Frontend React]
+        end
+
+        subgraph Private_Subnet["Private Subnet"]
+            Backend[ECS Fargate: Backend FastAPI]
+            DB[(RDS PostgreSQL)]
+        end
+
+        subgraph Security["Governance & IAM"]
+            Role[CostReader Role]
+            Policy[Least Privilege Policy]
+        end
     end
 
-    subgraph Backend["Backend (FastAPI)"]
-        API[API REST]
-        CostSvc[Engine de Custos]
-        AnomalySvc[IA de Anomalias]
-        MockSvc[Modo Simulação]
+    subgraph External_Services["External Services"]
+        CE_API[AWS Cost Explorer API]
     end
 
-    subgraph "AWS Infrastructure"
-        CostExp[AWS Cost Explorer API]
-        DB[(PostgreSQL)]
-        IAM[CostReader Role]
-    end
-
-    UI --> API
-    API --> CostSvc
-    API --> AnomalySvc
-    CostSvc --> CostExp
-    CostSvc --> DB
-    MockSvc -.-> API
+    User -->|HTTPS| ALB
+    ALB -->|Port 3000| Frontend
+    ALB -->|Port 8000| Backend
+    Frontend -->|API Calls| Backend
+    Backend -->|SQL| DB
+    Backend -->|Assume Role| Role
+    Role -->|Query| CE_API
+    Policy --> Role
 ```
 
 ---
