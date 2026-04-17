@@ -8,136 +8,33 @@ import {
   getTagCompliance,
   exportCsv,
 } from '../services/api'
-import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts'
 
-const COLORS = ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444']
-
-function StatCard({ title, value, subtitle, icon }) {
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-slate-500">{title}</p>
-          <p className="text-2xl font-bold text-slate-800 mt-1">{value}</p>
-          {subtitle && (
-            <p className="text-sm text-slate-400 mt-1">{subtitle}</p>
-          )}
-        </div>
-        <div className="text-3xl">{icon}</div>
-      </div>
-    </div>
-  )
-}
+import StatCard from '../components/StatCard'
+import { CostPieChart, DailyTrendChart, TopResourcesChart } from '../components/Charts'
 
 function AnomalyAlert({ anomalies }) {
   if (!anomalies || anomalies.length === 0) return null
 
   return (
-    <div className="bg-red-50 border-l-4 border-red-500 rounded-lg p-4 mb-6">
+    <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 rounded-xl p-5 mb-8 shadow-sm">
       <div className="flex items-start">
-        <span className="text-2xl mr-3">⚠️</span>
+        <div className="bg-amber-100 dark:bg-amber-800 p-2 rounded-lg mr-4">
+          <span className="text-xl">⚠️</span>
+        </div>
         <div>
-          <h3 className="font-semibold text-red-800">Anomalia de Custo Detectada</h3>
-          {anomalies.slice(0, 3).map((anomaly, idx) => (
-            <p key={idx} className="text-sm text-red-700 mt-1">
-              {anomaly.date}: ${anomaly.cost.toFixed(2)} (
-              {anomaly.deviation_percentage}% acima da média de 7 dias) -{' '}
-              <span className="font-medium">{anomaly.affected_service}</span>
-            </p>
-          ))}
+          <h3 className="font-bold text-amber-900 dark:text-amber-200 text-lg">Potential Anomalies Detected</h3>
+          <div className="mt-2 space-y-2">
+            {anomalies.slice(0, 3).map((anomaly, idx) => (
+              <p key={idx} className="text-sm text-amber-800 dark:text-amber-300">
+                <span className="font-semibold">{anomaly.date}</span>: {anomaly.affected_service} spend was 
+                <span className="text-amber-600 dark:text-amber-400 font-bold"> {anomaly.deviation_percentage}% </span> 
+                above 7-day average.
+              </p>
+            ))}
+          </div>
         </div>
       </div>
     </div>
-  )
-}
-
-function CostPieChart({ data }) {
-  return (
-    <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
-        <Pie
-          data={data}
-          cx="50%"
-          cy="50%"
-          innerRadius={60}
-          outerRadius={100}
-          paddingAngle={2}
-          dataKey="cost"
-          nameKey="service"
-          label={({ name, percent }) =>
-            `${name} ${(percent * 100).toFixed(0)}%`
-          }
-        >
-          {data.map((entry, index) => (
-            <Cell key={index} fill={COLORS[index % COLORS.length]} />
-          ))}
-        </Pie>
-        <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
-      </PieChart>
-    </ResponsiveContainer>
-  )
-}
-
-function DailyTrendChart({ data }) {
-  return (
-    <ResponsiveContainer width="100%" height={300}>
-      <AreaChart data={data}>
-        <defs>
-          <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-        <XAxis
-          dataKey="date"
-          tick={{ fontSize: 12 }}
-          tickFormatter={(value) => value.slice(5)}
-        />
-        <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}`} />
-        <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
-        <Area
-          type="monotone"
-          dataKey="total"
-          stroke="#0ea5e9"
-          strokeWidth={2}
-          fill="url(#colorCost)"
-        />
-      </AreaChart>
-    </ResponsiveContainer>
-  )
-}
-
-function TopResourcesChart({ data }) {
-  return (
-    <ResponsiveContainer width="100%" height={250}>
-      <BarChart data={data} layout="vertical">
-        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-        <XAxis type="number" tickFormatter={(v) => `$${v}`} />
-        <YAxis
-          type="category"
-          dataKey="service"
-          width={80}
-          tick={{ fontSize: 12 }}
-        />
-        <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
-        <Bar dataKey="cost" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
-      </BarChart>
-    </ResponsiveContainer>
   )
 }
 
@@ -145,44 +42,33 @@ function TagComplianceTable({ resources }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
-        <thead className="bg-slate-50">
-          <tr>
-            <th className="text-left p-3 font-medium text-slate-600">
-              Recurso
-            </th>
-            <th className="text-left p-3 font-medium text-slate-600">
-              Tipo
-            </th>
-            <th className="text-left p-3 font-medium text-slate-600">
-              Serviço
-            </th>
-            <th className="text-left p-3 font-medium text-slate-600">
-              Tags Ausentes
-            </th>
+        <thead>
+          <tr className="bg-slate-50 dark:bg-slate-800/50">
+            <th className="text-left p-4 font-semibold text-slate-600 dark:text-slate-400">Resource Name</th>
+            <th className="text-left p-4 font-semibold text-slate-600 dark:text-slate-400">Service</th>
+            <th className="text-left p-4 font-semibold text-slate-600 dark:text-slate-400">Status</th>
           </tr>
         </thead>
-        <tbody>
-          {resources.slice(0, 10).map((r, idx) => (
-            <tr key={idx} className="border-t border-slate-100">
-              <td className="p-3 text-slate-800 max-w-xs truncate">
+        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+          {resources.slice(0, 8).map((r, idx) => (
+            <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+              <td className="p-4 text-slate-800 dark:text-slate-200 font-medium truncate max-w-xs">
                 {r.resource_name || r.resource_id}
               </td>
-              <td className="p-3 text-slate-600">{r.resource_type}</td>
-              <td className="p-3 text-slate-600">{r.service}</td>
-              <td className="p-3">
+              <td className="p-4 text-slate-600 dark:text-slate-400">{r.service}</td>
+              <td className="p-4">
                 {r.missing_tags.length > 0 ? (
-                  <span className="inline-flex gap-1">
+                  <div className="flex flex-wrap gap-1">
                     {r.missing_tags.map((tag, i) => (
-                      <span
-                        key={i}
-                        className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs"
-                      >
-                        {tag}
+                      <span key={i} className="px-2 py-0.5 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-md text-[10px] uppercase font-bold tracking-wider">
+                        Missing: {tag}
                       </span>
                     ))}
-                  </span>
+                  </div>
                 ) : (
-                  <span className="text-green-600">✓ Conforme</span>
+                  <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full"></span> Compliant
+                  </span>
                 )}
               </td>
             </tr>
@@ -195,9 +81,9 @@ function TagComplianceTable({ resources }) {
 
 export default function Dashboard() {
   const { logout } = useAuth()
-  const [activeTab, setActiveTab] = useState('overview')
+  const [isExporting, setIsExporting] = useState(false)
 
-  const { data: dashboardData, isLoading: dashLoading } = useQuery({
+  const { data: dashboardData } = useQuery({
     queryKey: ['dashboard'],
     queryFn: async () => {
       const res = await getDashboard()
@@ -230,14 +116,19 @@ export default function Dashboard() {
   })
 
   const handleExport = async () => {
-    const res = await exportCsv()
-    const url = window.URL.createObjectURL(new Blob([res.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', 'costs.csv')
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
+    setIsExporting(true)
+    try {
+      const res = await exportCsv()
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', 'aws-cost-report.csv')
+      document.body.appendChild(link)
+      link.click()
+      window.URL.revokeObjectURL(url)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const formatCurrency = (value) => {
@@ -248,106 +139,108 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="bg-white border-b border-slate-200 px-6 py-4">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
+      <nav className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">☁️</span>
-            <h1 className="text-xl font-bold text-slate-800">CloudCost IQ</h1>
+            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-xl shadow-indigo-200 shadow-lg">
+              IQ
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">CloudCost IQ</h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Infrastructure Intelligence</p>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
             <button
               onClick={handleExport}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm font-medium"
+              disabled={isExporting}
+              className="px-5 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl hover:opacity-90 transition shadow-sm text-sm font-semibold flex items-center gap-2"
             >
-              Exportar CSV
+              {isExporting ? 'Exporting...' : 'Export Report'}
             </button>
-            <button
-              onClick={logout}
-              className="text-slate-600 hover:text-slate-800 text-sm font-medium"
-            >
-              Sair
+            <button onClick={logout} className="text-slate-500 hover:text-rose-600 transition-colors p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/10">
+              <span className="text-xl">Logout</span>
             </button>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto p-6">
+      <main className="max-w-7xl mx-auto p-6 md:p-8">
+        <header className="mb-8">
+          <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Cost Overview</h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Real-time AWS infrastructure spending insights.</p>
+        </header>
+
         <AnomalyAlert anomalies={anomalyData} />
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           <StatCard
-            title="Gasto do Mês"
+            title="Month-to-Date"
             value={formatCurrency(dashboardData?.month_to_date || 0)}
-            subtitle="Período de cobrança atual"
+            subtitle="Current cycle spend"
+            trend={+2.4}
             icon="💰"
           />
           <StatCard
-            title="Projeção Fim do Mês"
+            title="Monthly Forecast"
             value={formatCurrency(forecastData?.forecast || 0)}
-            subtitle={`Baseado em ${forecastData?.daily_average || 0}/dia média`}
+            subtitle={`Based on ${formatCurrency(forecastData?.daily_average || 0)}/day`}
             icon="📈"
           />
           <StatCard
-            title="Média Diária"
+            title="Avg. Daily Spend"
             value={formatCurrency(forecastData?.daily_average || 0)}
-            subtitle={`${forecastData?.days_passed || 0} dias passados`}
+            subtitle={`Analyzed over ${forecastData?.days_passed || 0} days`}
             icon="📊"
           />
           <StatCard
-            title="Conformidade de Tags"
+            title="Tag Compliance"
             value={`${tagData?.summary?.compliance_percentage || 0}%`}
-            subtitle={`${tagData?.summary?.non_compliant_resources || 0} não conforme`}
+            subtitle={`${tagData?.summary?.non_compliant_resources || 0} alerts`}
+            trend={-1.5}
             icon="🏷️"
           />
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
-          <div className="p-4 border-b border-slate-200">
-            <h2 className="text-lg font-semibold text-slate-800">
-              Tendência de Custo Diário (30 Dias)
-            </h2>
-          </div>
-          <div className="p-4">
-            <DailyTrendChart data={dashboardData?.daily_trend || []} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-            <div className="p-4 border-b border-slate-200">
-              <h2 className="text-lg font-semibold text-slate-800">
-                Gasto por Serviço
-              </h2>
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+          <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+              <h3 className="font-bold text-slate-800 dark:text-white">Daily Spending Trend</h3>
+              <span className="text-xs font-bold text-slate-400 uppercase">Last 30 Days</span>
             </div>
-            <div className="p-4">
+            <div className="p-6">
+              <DailyTrendChart data={dashboardData?.daily_trend || []} />
+            </div>
+          </div>
+          
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-700">
+              <h3 className="font-bold text-slate-800 dark:text-white">Spend by Service</h3>
+            </div>
+            <div className="p-6">
               <CostPieChart data={dashboardData?.spend_by_service || []} />
             </div>
           </div>
+        </section>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-            <div className="p-4 border-b border-slate-200">
-              <h2 className="text-lg font-semibold text-slate-800">
-                Top 5 Recursos Mais Caros
-              </h2>
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-700">
+              <h3 className="font-bold text-slate-800 dark:text-white">Tag Compliance Report</h3>
             </div>
-            <div className="p-4">
+            <TagComplianceTable resources={tagData?.resources || []} />
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-700">
+              <h3 className="font-bold text-slate-800 dark:text-white">Top 5 Resource Spend</h3>
+            </div>
+            <div className="p-6">
               <TopResourcesChart data={dashboardData?.top_resources || []} />
             </div>
           </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-          <div className="p-4 border-b border-slate-200">
-            <h2 className="text-lg font-semibold text-slate-800">
-              Relatório de Conformidade de Tags
-            </h2>
-            <p className="text-sm text-slate-500 mt-1">
-              Recursos com tags obrigatórias ausentes: projeto, ambiente, gerenciado-por
-            </p>
-          </div>
-          <TagComplianceTable resources={tagData?.resources || []} />
-        </div>
+        </section>
       </main>
     </div>
   )

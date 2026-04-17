@@ -31,3 +31,15 @@ build/
 # Test
 .pytest_cache/
 coverage/node_modules/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+.terraformrc
+terraform.rc
