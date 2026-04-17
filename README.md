@@ -7,7 +7,7 @@
 
 O **CloudCost IQ** é uma solução avançada de Observabilidade de Custos Cloud, projetada para fornecer insights em tempo real sobre infraestruturas AWS. Mais do que um simples dashboard, ele utiliza algoritmos de detecção de anomalias para prevenir surpresas na fatura e garantir a governança de tags.
 
-![Arquitetura da Solução](./stack.png)
+![Arquitetura da Solução](./architecture_new.png)
 
 ## ✨ Destaques Técnicos
 
