@@ -1,6 +1,7 @@
 # ☁️ CloudCost IQ: Infrastructure Intelligence Dashboard
 
 [![AWS](https://img.shields.io/badge/AWS-Powered-232F3E?style=flat-square&logo=amazon-aws)](https://aws.amazon.com/)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react)](https://reactjs.org/)
 [![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=flat-square&logo=terraform)](https://www.terraform.io/)
