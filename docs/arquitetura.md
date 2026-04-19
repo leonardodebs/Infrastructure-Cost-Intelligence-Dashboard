@@ -2,149 +2,106 @@
 
 ## Visão Geral do Sistema
 
-O CloudCost IQ é uma plataforma de análise inteligente de custos de infraestrutura em nuvem AWS. A arquitetura segue um padrão de microsserviços com três componentes principais: frontend React, backend FastAPI e banco de dados PostgreSQL.
+O CloudCost IQ é uma plataforma de análise inteligente de custos de infraestrutura em nuvem AWS. A arquitetura segue um padrão de microsserviços modernos, desenhada para ser hospedada facilmente através de provedores PaaS (Platform as a Service) contêinerizados, como o **Railway**.
+
+A plataforma possui três componentes principais:
+1. **Frontend (Nginx + React)**
+2. **Backend (FastAPI)**
+3. **Database (PostgreSQL Gerenciado)**
 
 ## Arquitetura de Componentes
 
 ### Camada de Frontend
 - **Tecnologia:** React 18 + Vite
 - **Styling:** Tailwind CSS
-- **Comunicação:** API REST via Axios
-- **Porta:** 3000 (exposta)
-- **Funcionalidades:** Dashboard de custos, Login, visualização de relatórios
+- **Transparencia e Proxy:** Nginx (para hospedar a SPA gerada pelo React e rotear o path `/auth`, `/api`, `/costs` ao backend).
+- **Funcionalidades:** Dashboard de custos, Login, visualização de relatórios.
 
 ### Camada de Backend
-- **Tecnologia:** FastAPI (Python 3.11+)
+- **Tecnologia:** FastAPI (Python 3.12)
 - **ORM:** SQLAlchemy 2.0
-- **Autenticação:** JWT com python-jose
-- **Porta:** 8000 (exposta)
-- **Endpoints:** /auth/*, /costs/*, /health
+- **Autenticação:** JWT com `python-jose` protegido por roteamento de Reverse Proxy Nginx.
+- **Integração Externa:** Consulta AWS via `boto3`.
 
 ### Camada de Dados
-- **Banco:** PostgreSQL 15 Alpine
-- **Porta:** 5432 (interna)
-- **Persistencia:** Volume Docker
+- **Banco:** PostgreSQL Engine (Railway Native)
+- **Persistência:** Volumes gerenciados automaticamente pelo PaaS.
 
-### Infraestrutura
-- **Orquestração:** Docker Compose
-- **Cloud:** AWS (provisionamento via Terraform)
-- **Estado Terraform:** S3 + DynamoDB
-
-## Fluxo de Dados
+## Fluxo de Dados e Rede (Railway)
 
 ```
-Usuario -> Frontend (3000) -> Backend (8000) -> PostgreSQL (5432)
-                    |              |
-                    v              v
-              AWS Cost Explorer   AWS Secrets
+Navegador Web
+       | (HTTPS - Domínio Público do Frontend)
+       v
+Railway Edge Router
+       |
+       v
+[ Serviço Frontend (Nginx Proxy) ]
+       | --(Proxy Pass Reverso usando BACKEND_URL)--> [ Serviço Backend ]
+                                                               |
+                                                               v
+                                                    [ Banco de Dados PostgreSQL ]
+                                                               |
+                                                        (Chamadas Externas) -> API do AWS Cost Explorer
 ```
 
-## Estrutura de Diretórios
+## Estrutura de Diretórios e Serviços
 
 ```
 cloudcost-iq/
-├── backend/
+├── backend/          (Serviço 1 - API)
 │   ├── app/
 │   │   ├── routers/    # endpoints API
 │   │   ├── services/   # lógica de negócio
-│   │   ├── models/    # schemas DB
-│   │   └── main.py    # aplicação FastAPI
-│   ├── Dockerfile
-│   └── requirements.txt
-├── frontend/
+│   │   ├── models/     # schemas DB
+│   │   └── main.py     # aplicação FastAPI
+│   └── Dockerfile
+├── frontend/         (Serviço 2 - UI & Proxy)
 │   ├── src/
-│   │   ├── pages/     # componentes página
-│   │   ├── services/  # chamadas API
+│   │   ├── pages/      # componentes página
+│   │   ├── services/   # chamadas API (axios)
 │   │   └── App.jsx
-│   ├── Dockerfile
-│   └── package.json
-├── terraform/
-│   ├── main.tf
-│   ├── variables.tf
-│   └── iam.tf
-└── docker-compose.yml
+│   ├── nginx.conf      # Regras vitais do Reverse Proxy
+│   └── Dockerfile
+└── terraform/        (Opcional: Legado AWS ECS)
 ```
 
 ## Stack Tecnológico
 
-| Componente | Tecnologia | Versão |
-|------------|------------|-------|
-| Backend Framework | FastAPI | 0.109.0 |
-| Servidor ASGI | Uvicorn | 0.27.0 |
-| ORM | SQLAlchemy | 2.0.25 |
-| Banco de Dados | PostgreSQL | 15 |
-| Frontend | React | 18 |
-| Build Tool | Vite | latest |
-| CSS | Tailwind | latest |
-| Cloud SDK | Boto3 | 1.34.0 |
-| Provisionamento | Terraform | >=1.0 |
+| Componente | Tecnologia | Papel Fundamental |
+|------------|------------|-------------------|
+| Web Proxy | Nginx | Roteamento HTTPS & Prevenção CORS |
+| Backend API | FastAPI | Fast Performance Rest Framework |
+| ORM | SQLAlchemy | Consultas e mapeamento Postgres |
+| Frontend Engine| React & Vite | Criação rápida e leve (SPA) |
+| DevOps & PaaS | Railway | Deploy contínuo, Logs e Networking Integrado |
+| Relatórios | Recharts | Visualizações financeiras de Cloud |
 
-## Autenticação e Autorização
+## Autenticação e Proxy Seguro
 
-O sistema utiliza JWT (JSON Web Tokens) com os seguintes parâmetros:
-- **Algoritmo:** HS256
-- **Validade Token:** 30 minutos (configurável via ACCESS_TOKEN_EXPIRE_MINUTES)
-- **Hash de Senha:** Bcrypt via passlib
+O sistema utiliza a combinação de **JWT (JSON Web Tokens)** + **Nginx Proxy Pass**.
+- Em vez de expor portas diferentes aos usuários, o Nginx é o "Porteiro".
+- Quando a URL `/auth/login` é batida no frontend, o Nginx empacota esse pedido e direciona (via `BACKEND_URL`) com grandes tamanhos de Buffer (`proxy_buffer_size`) diretos para a API invisível, retornando a autenticação perfeitamente.
+- O Token JWT gerado é o "crachá" para as telas protegidas do React.
 
-## Integração AWS
+## Variáveis de Ambiente Essenciais (Deploy)
 
-### Serviços AWS Utilizados
-- **AWS Cost Explorer:** Consulta de custos granularity diária
-- **AWS Organizations:** Análise por conta/tag
-- **AWS IAM:** Credenciais com permissões granulares
+A configuração se baseia amplamente no motor do **Railway**.
 
-### Permissões IAM Necessárias
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Action": [
-      "ce:GetCostAndUsage",
-      "ce:GetDimensionValues",
-      "ce:GetTags"
-    ],
-    "Resource": "*"
-  }]
-}
-```
+### Variáveis do Backend Service
+| Variável | Obrigatório | Descrição |
+|----------|-------------|-----------|
+| `AWS_ACCESS_KEY_ID` | Sim | Chave de acesso AWS com política de Costs |
+| `AWS_SECRET_ACCESS_KEY` | Sim | Chave secreta AWS |
+| `AWS_REGION` | Sim | Região AWS default (`us-east-1` recomendado) |
+| `DATABASE_URL` | Sim | A url automatizada gerada na aba 'Connect' do Postgres no Railway |
+| `SECRET_KEY` | Sim | Chave SHA-256 para o JWT Auth |
 
-## Considerações de Segurança
+### Variáveis do Frontend Service
+| Variável | Obrigatório | Descrição |
+|----------|-------------|-----------|
+| `BACKEND_URL` | Sim | URL HTTPS de domínio público gerada para o serviço do *Backend* |
 
-1. **Credenciais AWS:** Armazenadas em variáveis de ambiente, nunca em código
-2. **CORS:** Configurado para permitir origens específicas em produção
-3. **Secrets:** SECRET_KEY deve ser alterado em produção
-4. **Banco:** Credenciais padrão devem ser alteradas
-5. **HTTPS:** Recomendado em produção (nginx reverse proxy)
-
-## Escalabilidade
-
-- **Horizontal:** Backend sem estado permite réplicas múltiplas
-- **Vertical:** Recursos Docker configuráveis (CPU, memória)
-- **Banco:** PostgreSQL suporta réplicas de leitura
-- **Cache:** Redis opcional para sessões
-
-## Variáveis de Ambiente
-
-| Variável | Obrigatório | Padrão | Descrição |
-|----------|-------------|--------|-----------|
-| AWS_ACCESS_KEY_ID | Sim | - | Chave de acesso AWS |
-| AWS_SECRET_ACCESS_KEY | Sim | - | Chave secreta AWS |
-| AWS_REGION | Sim | us-east-1 | Região AWS |
-| DATABASE_URL | Sim | - | String conexão PostgreSQL |
-| SECRET_KEY | Sim | - | Chave JWT |
-| ALGORITHM | Não | HS256 | Algoritmo JWT |
-| ACCESS_TOKEN_EXPIRE_MINUTES | Não | 30 | Expiração token |
-
-##Health Checks
-
-- Backend: GET /health retorna {"status": "healthy"}
-- Database: Healthcheck via pg_isready
-- Frontend: Verificação de conectividade com API
-
-## CI/CD
-
-Github Actions configurado em `.github/workflows/ci.yml`:
-- Lint e typecheck em pushes
-- Build de imagens Docker
-- Testes unitários automáticos
+## Lições Aprendidas de Infraestrutura
+- O override do Header HTTP `$host` dentro do Nginx causa a Falha de Hostname (`status 400 Bad Request`) em serviços de PaaS. Retiramos da configuração default porque os Load Balancers do PaaS usam o Host Header para decidir qual container chamar.
+- O Uvicorn do FastAPI costuma gerar Headers longos de Proxy. As diretivas de `proxy_buffer_size 128k` garantem estabilidade de sessão sem gerar o trágico erro 502 (`upstream sent too big header`).

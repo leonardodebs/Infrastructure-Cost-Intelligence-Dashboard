@@ -12,11 +12,11 @@ O **CloudCost IQ** é uma solução avançada de Observabilidade de Custos Cloud
 
 ## ✨ Destaques Técnicos
 
-- 🛡️ **Arquitetura de Menor Privilégio**: Roles IAM granulares que limitam o acesso apenas ao necessário para leitura de custos.
+- 🚀 **Deploy Moderno (PaaS)**: Hospedado integralmente na **Railway** (Frontend Nginx, Backend FastAPI, e banco gerenciado PostgreSQL), garantindo CI/CD automagicamente via integração direto com o GitHub.
+- 🛡️ **Arquitetura de Menor Privilégio**: Roles IAM granulares que limitam o acesso apenas ao necessário para leitura de custos da AWS Cost Explorer via boto3.
 - 📈 **Detecção de Anomalias**: Algoritmo de Média Móvel (Rolling Average) para identificar picos atípicos de consumo em menos de 24h.
 - 🏷️ **Governance Engine**: Relatório automatizado de conformidade de tags para garantir que cada centavo seja rastreado.
-- 🏗️ **Infraestrutura como Código (IaC)**: Deploy modularizado via Terraform (VPC, ECS Fargate, RDS, ALB).
-- 💎 **UX Premium**: Interface moderna com suporte a Dark Mode, gráficos reativos (Recharts) e exportação de relatórios.
+- 💎 **UX Premium**: Interface desenvolvida em React + Vite, suporte a Dark Mode, gráficos reativos (Recharts) e exportação de relatórios C-Level.
 
 ---
 
@@ -26,66 +26,61 @@ O **CloudCost IQ** é uma solução avançada de Observabilidade de Custos Cloud
 graph TB
     User((Usuário))
 
-    subgraph AWS_Cloud["AWS Cloud (VPC)"]
-        ALB[Application Load Balancer]
+    subgraph Railway_Cloud["Railway (PaaS)"]
+        ALB[Railway Edge Router]
         
-        subgraph Public_Subnet["Public Subnet"]
-            Frontend[ECS Fargate: Frontend React]
-        end
-
-        subgraph Private_Subnet["Private Subnet"]
-            Backend[ECS Fargate: Backend FastAPI]
-            DB[(RDS PostgreSQL)]
-        end
-
-        subgraph Security["Governance & IAM"]
-            Role[CostReader Role]
-            Policy[Least Privilege Policy]
-        end
+        Frontend[Frontend Service: Vite + React + Nginx]
+        Backend[Backend Service: FastAPI]
+        DB[(PostgreSQL Integrado)]
     end
 
-    subgraph External_Services["External Services"]
+    subgraph External_Services["AWS Cloud"]
         CE_API[AWS Cost Explorer API]
+        IAM_Role[CostReader IAM Role]
     end
 
-    User -->|HTTPS| ALB
-    ALB -->|Port 3000| Frontend
-    ALB -->|Port 8000| Backend
-    Frontend -->|API Calls| Backend
+    User -->|HTTPS Base URL| ALB
+    ALB -->|Roteamento| Frontend
+    ALB -->|Proxy Interno| Backend
+    Frontend -->|Proxy Pass API| Backend
     Backend -->|SQL| DB
-    Backend -->|Assume Role| Role
-    Role -->|Query| CE_API
-    Policy --> Role
+    Backend -->|Assume Role via Keys| IAM_Role
+    IAM_Role -->|Query| CE_API
 ```
 
 ---
 
-## 🚦 Início Rápido
+## 🚦 Deploy de Produção (Railway)
 
-### 1. Configuração do Ambiente
-Clone o repositório e configure seu arquivo `.env`:
-```bash
-cp .env.example .env
-```
-*Dica: O projeto entra automaticamente em **Mock Mode** se não detectar chaves AWS, permitindo testar a interface imediatamente.*
+Este projeto foi projetado para rodar em PaaS (Platform as a Service) modernos. O processo de deploy é otimizado para o **Railway**:
 
-### 2. Execução via Docker (Recomendado)
-```bash
-docker-compose up --build
-```
-Acesse:
-- **Painel**: [http://localhost:3000](http://localhost:3000)
-- **API (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
+### 1. Provisionando o CloudCost IQ
+1. Crie um novo projeto no Railway.
+2. Adicione os três serviços:
+   - **PostgreSQL**: Crie um plugin de banco de dados e copie a `DATABASE_URL`.
+   - **Backend**: Crie um serviço a partir do diretório `/backend` do repositório. Defina variáveis como as credenciais AWS e a conexão do banco.
+   - **Frontend**: Crie um serviço a partir do diretório `/frontend`.
+
+### 2. Configurações e Variáveis Críticas (Frontend)
+Para resolver erros de CORS ou Proxy Pass Reverso (como `502 Bad Gateway` e `400 Bad Request` no Nginx), configure:
+- `BACKEND_URL`: A URL **pública** sem barra no final gerada para o seu serviço de Backend (Ex: `https://seu-app-backend.up.railway.app`).
+
+O Nginx no frontend fará um *proxy pass* e rotear requisições em `/api/`, `/auth/` e `/costs/` diretamente para o backend de forma transparente.
 
 ---
 
-## 🔒 Governança de Infraestrutura (Terraform)
+## 🔒 Variáveis de Ambiente e Segurança
 
-A pasta `terraform/` agora está organizada em módulos de nível de produção:
-- `networking.tf`: Rede isolada com subnets públicas/privadas e NAT Gateway.
-- `database.tf`: RDS PostgreSQL gerenciado com criptografia em repouso.
-- `compute.tf`: Cluster ECS Fargate (Serverless) para rodar os containers.
-- `security.tf`: Regras de firewall (Security Groups) e permissões IAM.
+| Variável | Serviço | Obrigatório | Descrição |
+|----------|---------|-------------|-----------|
+| `AWS_ACCESS_KEY_ID` | Backend | Sim | Access Key com permissões via IAM Role para Cost Explorer. |
+| `AWS_SECRET_ACCESS_KEY` | Backend | Sim | Secret Access. |
+| `AWS_REGION` | Backend | Sim | Usualmente `us-east-1` que processa Billing AWS. |
+| `DATABASE_URL` | Backend | Sim | URL gerada automaticamente pelo Railway Postgres. |
+| `SECRET_KEY` | Backend | Sim | Chave randômica para hash e assinatura de JWT Tokens. |
+| `BACKEND_URL` | Frontend | Sim | URL principal gerada para o Backend (O Nginx resolve a ponte). |
+
+*Nota sobre IaC*: Arquivos do `terraform/` foram preservados como referência de uma arquitetura legada (ECS/Fargate) para versionamento, porém a branch funcional padrão foca de ponta-a-ponta na simplicidade via Railway.
 
 ---
 
@@ -93,10 +88,10 @@ A pasta `terraform/` agora está organizada em módulos de nível de produção:
 
 | Camada | Tecnologia |
 |--------|------------|
-| **Frontend** | React, Tailwind CSS, Recharts, Vite |
+| **Frontend** | React, Tailwind CSS, Recharts, Vite, Nginx Proxy |
 | **Backend** | Python 3.12, FastAPI, SQLAlchemy, Pydantic |
-| **DevOps** | Docker, Terraform, GitHub Actions |
-| **Cloud** | AWS (Cost Explorer, ECS, RDS, ECR) |
+| **Deployment** | Docker, Nginx, Railway, GitHub Actions CI |
+| **Cloud** | AWS (Cost Explorer Integrado) |
 
 ---
 
