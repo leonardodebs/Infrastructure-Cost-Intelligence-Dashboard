@@ -103,7 +103,7 @@ class TagComplianceService:
             parts = arn.split(':')
             service = parts[2] if len(parts) > 2 else "Unknown"
             return service.upper()
-        except:
+        except Exception:
             return "Unknown"
     
     def _extract_type_from_arn(self, arn: str) -> str:
@@ -114,7 +114,7 @@ class TagComplianceService:
             if len(parts) > 5:
                 return parts[5].split('/')[0] if '/' in parts[5] else parts[5]
             return "Unknown"
-        except:
+        except Exception:
             return "Unknown"
     
     def get_compliance_summary(self) -> Dict[str, Any]:
