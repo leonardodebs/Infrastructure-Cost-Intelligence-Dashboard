@@ -99,4 +99,4 @@ O Nginx no frontend fará um *proxy pass* e rotear requisições em `/api/`, `/a
 Distribuído sob a licença MIT. Veja `LICENSE` para mais informações.
 
 ---
-**Desenvolvido com ❤️ para fins de otimização de infraestrutura.**
+**Desenvolvido com IA para fins de otimização de infraestrutura.**
