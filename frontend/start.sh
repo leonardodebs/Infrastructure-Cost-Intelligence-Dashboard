@@ -1,6 +1,8 @@
 #!/bin/sh
 
+echo "🚀 Iniciando CloudCost IQ Dashboard..."
 echo "🔍 Inspecionando variaveis..."
+
 env | grep BACK || echo "Nenhuma variavel BACK encontrada"
 
 # Define fallback se BACKEND_URL estiver vazia
